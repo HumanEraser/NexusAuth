@@ -1,0 +1,200 @@
+@model IEnumerable<NexusAuth.Models.QuotaRequest>
+@{
+    ViewData["Title"] = "Quota Upgrade Requests";
+    var customerTokens = ViewBag.CustomerTokens as List<NexusAuth.Models.ApiToken> ?? new List<NexusAuth.Models.ApiToken>();
+    int currentMaxTokens = ViewBag.CurrentMaxTokens ?? 2;
+}
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-0">Quota & Tier Upgrade Requests</h2>
+        <p class="text-secondary small">
+            @if (User.IsInRole("Customer"))
+            {
+                <span>Current Token Limit: <strong class="text-info">@currentMaxTokens active tokens</strong>. Request higher throughput or additional key slots.</span>
+            }
+            else
+            {
+                <span>Review and govern customer tier expansion and rate-limit increase requests.</span>
+            }
+        </p>
+    </div>
+    @if (User.IsInRole("Customer"))
+    {
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#submitQuotaModal">+ Request Quota Upgrade</button>
+    }
+</div>
+
+<div class="card p-3">
+    <div class="table-responsive">
+        <table id="quotaTable" class="table table-dark table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Subscriber</th>
+                    <th>Request Type</th>
+                    <th>Target</th>
+                    <th>Requested Limit</th>
+                    <th>Justification</th>
+                    <th>Status</th>
+                    <th>Admin Notes</th>
+                    @if (User.IsInRole("Administrator"))
+                    {
+                        <th>Actions</th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var req in Model)
+                {
+                    <tr>
+                        <td>#@req.RequestId</td>
+                        <td>@req.User?.Email</td>
+                        <td>
+                            @if (req.RequestType == "RateLimitUpgrade")
+                            {
+                                <span class="badge bg-info text-dark">Rate Limit Upgrade</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-warning text-dark">Token Slot Increase</span>
+                            }
+                        </td>
+                        <td>
+                            @(req.RequestType == "RateLimitUpgrade" ? (req.ApiToken?.TokenName ?? "N/A") : "Account Token Ceiling")
+                        </td>
+                        <td class="fw-bold text-info">
+                            @(req.RequestType == "RateLimitUpgrade" ? $"{req.RequestedValue} req/min" : $"{req.RequestedValue} active tokens")
+                        </td>
+                        <td class="small text-secondary">@req.Justification</td>
+                        <td>
+                            @if (req.Status == "Pending")
+                            {
+                                <span class="badge bg-warning text-dark">Pending</span>
+                            }
+                            else if (req.Status == "Approved")
+                            {
+                                <span class="badge bg-success">Approved</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-danger">Rejected</span>
+                            }
+                        </td>
+                        <td class="small text-secondary">@(req.AdminNotes ?? "—")</td>
+                        @if (User.IsInRole("Administrator"))
+                        {
+                            <td>
+                                @if (req.Status == "Pending")
+                                {
+                                    <form asp-action="Approve" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="requestId" value="@req.RequestId" />
+                                        <input type="hidden" name="adminNotes" value="Approved after capacity verification." />
+                                        <button type="submit" class="btn btn-success btn-sm">Approve</button>
+                                    </form>
+                                    <form asp-action="Reject" method="post" class="d-inline ms-1">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="requestId" value="@req.RequestId" />
+                                        <input type="hidden" name="adminNotes" value="Insufficient justification provided." />
+                                        <button type="submit" class="btn btn-outline-danger btn-sm">Reject</button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <span class="small text-secondary">Reviewed</span>
+                                }
+                            </td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@if (User.IsInRole("Customer"))
+{
+    <div class="modal fade" id="submitQuotaModal" tabindex="-1">
+        <div class="modal-dialog">
+            <form asp-action="Submit" method="post" class="modal-content bg-dark text-light border-secondary">
+                @Html.AntiForgeryToken()
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title fw-bold">Request Quota Upgrade</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small text-secondary">Upgrade Type</label>
+                        <select name="requestType" id="requestTypeSelect" class="form-select bg-secondary text-light border-0" onchange="toggleQuotaFields()">
+                            <option value="RateLimitUpgrade">Increase Token Rate Limit (req/min)</option>
+                            <option value="TokenSlotIncrease">Increase Active Token Limit (currently @currentMaxTokens)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3" id="targetTokenGroup">
+                        <label class="form-label small text-secondary">Select Active Token</label>
+                        <select name="tokenId" class="form-select bg-secondary text-light border-0">
+                            @foreach (var t in customerTokens)
+                            {
+                                <option value="@t.TokenId">@t.TokenName (Current: @t.RateLimitPerMinute req/min)</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small text-secondary" id="requestedValueLabel">Requested Rate Limit (req/min)</label>
+                        <input type="number" name="requestedValue" id="requestedValueInput" class="form-control bg-secondary text-light border-0" value="500" min="3" max="10000" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small text-secondary">Business / Technical Justification</label>
+                        <textarea name="justification" class="form-control bg-secondary text-light border-0" rows="3" placeholder="e.g., Scaling partner batch sync during peak harvest reporting..." required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Submit Request</button>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            $('#quotaTable').DataTable({ order: [[0, 'desc']] });
+        });
+
+        function toggleQuotaFields() {
+            const type = document.getElementById('requestTypeSelect').value;
+            const tokenGroup = document.getElementById('targetTokenGroup');
+            const label = document.getElementById('requestedValueLabel');
+            const input = document.getElementById('requestedValueInput');
+
+            if (type === 'TokenSlotIncrease') {
+                tokenGroup.style.display = 'none';
+                label.textContent = 'Requested Total Active Token Slots (Max 20)';
+                input.value = @(currentMaxTokens + 2);
+            } else {
+                tokenGroup.style.display = 'block';
+                label.textContent = 'Requested Rate Limit (req/min)';
+                input.value = 500;
+            }
+        }
+    </script>
+}

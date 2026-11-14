@@ -1,0 +1,55 @@
+// Sample configuration for production environment
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=YOUR_PROD_SQL_SERVER;Database=NexusAuthDB;User Id=YOUR_DB_USER;Password=YOUR_SECURE_PASSWORD;TrustServerCertificate=False;Encrypt=True;MultipleActiveResultSets=True;"
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*",
+  "SecuritySettings": {
+    "JwtSecretKey": "YOUR_SUPER_SECRET_MINIMUM_32_CHAR_KEY_HERE",
+    "TokenExpirationHours": "8"
+  }
+}
+
+
+
+// Setting Environment Overrides in IIS
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <location path="." inheritInChildApplications="false">
+    <system.webServer>
+      <handlers>
+        <add name="aspNetCore" path="*" verb="*" modules="AspNetCoreModuleV2" resourceType="Unspecified" />
+      </handlers>
+      <aspNetCore processPath="dotnet" arguments=".\NexusAuth.dll" stdoutLogEnabled="true" stdoutLogFile=".\logs\stdout" hostingModel="inprocess">
+        <environmentVariables>
+          <!-- Set Active Environment -->
+          <environmentVariable name="ASPNETCORE_ENVIRONMENT" value="Production" />
+          
+          <!-- Connection String Override for IIS -->
+          <environmentVariable name="ConnectionStrings__DefaultConnection" value="Server=10.0.1.50\SQLEXPRESS;Database=NexusAuthDB;User Id=svc_nexusauth_app;Password=P@ssw0rd2026!Secure;TrustServerCertificate=True;" />
+        </environmentVariables>
+      </aspNetCore>
+    </system.webServer>
+  </location>
+</configuration>
+
+
+
+// Setting Machine-Level System Environment Variables
+# Set Environment Type
+[System.Environment]::SetEnvironmentVariable('ASPNETCORE_ENVIRONMENT', 'Production', 'Machine')
+
+# Set Encrypted Production Connection String
+[System.Environment]::SetEnvironmentVariable('ConnectionStrings__DefaultConnection', 'Server=prod-db.internal;Database=NexusAuthDB;Integrated Security=SSPI;TrustServerCertificate=False;', 'Machine')
+
+
+
+// Enterprise Production Hardening Guidelines
+dotnet user-secrets init
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Server=localhost;Database=NexusAuthDB;Trusted_Connection=True;"

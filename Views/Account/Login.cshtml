@@ -1,0 +1,43 @@
+﻿@{
+    ViewData["Title"] = "Sign In";
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NexusAuth - Sign In</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <style>
+            body { background-color: #0f172a; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; }
+            .card { background-color: #1e293b; border: 1px solid #334155; }
+            .form-control { background-color: #0f172a; border-color: #475569; color: #f8fafc; }
+            .form-control:focus { background-color: #0f172a; border-color: #3b82f6; color: #f8fafc; box-shadow: 0 0 0 0.25rem rgba(59, 130, 246, 0.25); }
+    </style>
+</head>
+<body class="d-flex align-items-center justify-content-center min-vh-100">
+    <div class="card p-4 shadow-lg style="width: 100%; max-width: 400px;">
+        <div class="text-center mb-4">
+            <h3 class="fw-bold text-primary">NexusAuth</h3>
+            <p class="text-secondary small mb-0">Enterprise API Gateway Portal</p>
+        </div>
+
+        <form asp-action="Login" method="post">
+            <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+
+            <div class="mb-3">
+                <label class="form-label text-secondary small">Email Address</label>
+                <input type="email" name="email" class="form-control" value="admin@nexusauth.internal" required autofocus />
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label text-secondary small">Password</label>
+                <input type="password" name="password" class="form-control" value="Admin123!" required />
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100 py-2">Sign In</button>
+        </form>
+    </div>
+</body>
+</html>

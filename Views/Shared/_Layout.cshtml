@@ -1,0 +1,80 @@
+﻿@{
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString() ?? "Dashboard";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - NexusAuth Portal</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" />
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; }
+        .sidebar { background-color: #1e293b; border-right: 1px solid #334155; min-height: 100vh; }
+        .nav-link { color: #94a3b8; font-weight: 500; border-radius: 0.375rem; margin-bottom: 0.25rem; }
+        .nav-link:hover, .nav-link.active { color: #60a5fa; background-color: #0f172a; }
+        .card { background-color: #1e293b; border: 1px solid #334155; border-radius: 0.5rem; }
+        .table { color: #f8fafc; }
+        .table-dark { --bs-table-bg: #1e293b; --bs-table-border-color: #334155; }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse p-3">
+                <div class="d-flex align-items-center mb-4 ps-2">
+                    <h4 class="fw-bold text-primary mb-0">NexusAuth</h4>
+                </div>
+               <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link @(currentController == "Dashboard" ? "active" : "")" asp-controller="Dashboard" asp-action="Index">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link @(currentController == "Tokens" ? "active" : "")" asp-controller="Tokens" asp-action="Index">API Tokens</a>
+                    </li>
+                    @if (!User.IsInRole("Customer"))
+                    {
+                        <li class="nav-item">
+                            <a class="nav-link @(currentController == "Audit" ? "active" : "")" asp-controller="Audit" asp-action="Index">Audit Logs</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link @(currentController == "Users" ? "active" : "")" asp-controller="Users" asp-action="Index">User Management</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link @(currentController == "Admin" ? "active" : "")" asp-controller="Admin" asp-action="Index">Database Admin</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link @(currentController == "QuotaRequests" ? "active" : "")" asp-controller="QuotaRequests" asp-action="Index">Quota Requests</a>
+                        </li>
+                    }
+                    <li class="nav-item mt-3">
+                        <a class="nav-link text-info" href="/scalar/v1" target="_blank">Scalar API Docs ↗</a>
+                    </li>
+                </ul>
+                <hr class="border-secondary my-4" />
+                <div class="ps-2">
+                    <p class="small text-secondary mb-1">Signed in as:</p>
+                    <p class="fw-semibold small text-light mb-2">@User.Identity?.Name</p>
+                    <form asp-controller="Account" asp-action="Logout" method="post">
+                        <button type="submit" class="btn btn-outline-danger btn-sm w-100">Sign Out</button>
+                    </form>
+                </div>
+            </nav>
+
+            <!-- Main Content -->
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4">
+                @RenderBody()
+            </main>
+        </div>
+    </div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

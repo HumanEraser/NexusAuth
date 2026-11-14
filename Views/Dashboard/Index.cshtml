@@ -1,0 +1,129 @@
+﻿@model IEnumerable<NexusAuth.Models.AuditLog>
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-0">Security & Gateway Dashboard</h2>
+        <p class="text-secondary small">Real-time database metrics, token telemetry, and system audit logs.</p>
+    </div>
+    <span class="badge bg-success px-3 py-2">System Online</span>
+</div>
+
+<!-- KPI Summary Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card p-3">
+            <span class="text-secondary small fw-semibold">Active Tokens</span>
+            <h3 class="fw-bold text-primary mt-2 mb-0">@ViewBag.ActiveTokens</h3>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card p-3">
+            <span class="text-secondary small fw-semibold">Registered Apps</span>
+            <h3 class="fw-bold text-info mt-2 mb-0">@ViewBag.TotalApplications</h3>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card p-3">
+            <span class="text-secondary small fw-semibold">24h API Requests</span>
+            <h3 class="fw-bold text-success mt-2 mb-0">@ViewBag.TotalRequests24h</h3>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card p-3">
+            <span class="text-secondary small fw-semibold">Revoked Keys</span>
+            <h3 class="fw-bold text-danger mt-2 mb-0">@ViewBag.RevokedTokens</h3>
+        </div>
+    </div>
+</div>
+
+<!-- Analytics Chart & Scalar Playground Callout -->
+<div class="row g-3 mb-4">
+    <div class="col-md-8">
+        <div class="card p-3 h-100">
+            <h6 class="fw-bold mb-3 text-white">API Gateway Telemetry Breakdown</h6>
+            <div style="height: 250px;">
+                <canvas id="telemetryChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card p-3 h-100 d-flex flex-column justify-content-between">
+            <div>
+                <h6 class="fw-bold text-info mb-2">Interactive API Sandbox</h6>
+                <p class="text-secondary small">Test Bearer token authentication, input validation, and route responses live using the Scalar API portal.</p>
+            </div>
+            <a href="/scalar/v1" target="_blank" class="btn btn-outline-info w-100 mt-3">Launch Scalar Portal ↗</a>
+        </div>
+    </div>
+</div>
+
+<!-- Recent System Audit Log -->
+<div class="card p-3">
+    <h6 class="fw-bold mb-3 text-white">Recent Security & Audit Activity</h6>
+    <div class="table-responsive">
+        <table id="auditTable" class="table table-dark table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Timestamp (UTC)</th>
+                    <th>Action</th>
+                    <th>Target</th>
+                    <th>Entity ID</th>
+                    <th>Client IP</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var log in Model)
+                {
+                    <tr>
+                        <td class="small text-secondary">@log.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                        <td><span class="badge bg-secondary">@log.ActionType</span></td>
+                        <td>@log.TargetEntity</td>
+                        <td><code>@(log.TargetEntityId ?? "N/A")</code></td>
+                        <td class="small text-secondary">@log.ClientIp</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            // Initialize DataTables
+            $('#auditTable').DataTable({
+                paging: false,
+                searching: false,
+                info: false,
+                order: [[0, 'desc']]
+            });
+
+            // Initialize Chart.js Telemetry Graph
+            const ctx = document.getElementById('telemetryChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['200 Success', '401 Unauthorized', '403 Forbidden'],
+                    datasets: [{
+                        label: 'Requests',
+                        data: [@ViewBag.SuccessCount, @ViewBag.UnauthorizedCount, @ViewBag.ForbiddenCount],
+                        backgroundColor: ['#22c55e', '#f59e0b', '#ef4444'],
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: '#334155' }, ticks: { color: '#94a3b8' } },
+                        x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+                    }
+                }
+            });
+        });
+    </script>
+}

@@ -1,0 +1,143 @@
+﻿@model IEnumerable<NexusAuth.Models.AuditLog>
+@{
+    ViewData["Title"] = "Audit Logs";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-0">Security Audit Trail</h2>
+        <p class="text-secondary small">Immutable log history of system activities, access events, and token state changes.</p>
+    </div>
+    <span class="badge bg-primary px-3 py-2">SQL Engine Immutability Active</span>
+</div>
+
+<div class="card p-3">
+    <div class="table-responsive">
+        <table id="fullAuditTable" class="table table-dark table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Audit ID</th>
+                    <th>Timestamp (UTC)</th>
+                    <th>User Account</th>
+                    <th>Action Event</th>
+                    <th>Target Entity</th>
+                    <th>Target ID</th>
+                    <th>Client IP</th>
+                    <th>JSON Inspection</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var log in Model)
+                {
+                    <tr>
+                        <td class="text-secondary small">#@log.AuditId</td>
+                        <td class="small text-secondary">@log.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                        <td>
+                            @if (log.User != null)
+                            {
+                                <span class="fw-semibold">@log.User.Username</span>
+                                <span class="d-block small text-secondary">@log.User.Email</span>
+                            }
+                            else
+                            {
+                                <span class="text-secondary italic">System Process</span>
+                            }
+                        </td>
+                        <td>
+                            @if (log.ActionType.Contains("REVOKED") || log.ActionType.Contains("DELETE"))
+                            {
+                                <span class="badge bg-danger">@log.ActionType</span>
+                            }
+                            else if (log.ActionType.Contains("ROTATION") || log.ActionType.Contains("UPDATE"))
+                            {
+                                <span class="badge bg-warning text-dark">@log.ActionType</span>
+                            }
+                            else if (log.ActionType.Contains("LOGIN"))
+                            {
+                                <span class="badge bg-info text-dark">@log.ActionType</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-success">@log.ActionType</span>
+                            }
+                        </td>
+                        <td><code>@log.TargetEntity</code></td>
+                        <td><code>@(log.TargetEntityId ?? "N/A")</code></td>
+                        <td class="small text-secondary">@log.ClientIp</td>
+                        <td>
+                            @if (!string.IsNullOrEmpty(log.OldValuesJson) || !string.IsNullOrEmpty(log.NewValuesJson))
+                            {
+                                <button type="button" class="btn btn-outline-info btn-sm" 
+                                        onclick="viewJsonPayload('@log.ActionType', `@(log.OldValuesJson ?? "{}")`, `@(log.NewValuesJson ?? "{}")`)">
+                                    Inspect JSON
+                                </button>
+                            }
+                            else
+                            {
+                                <span class="text-secondary small">No Payload</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal: JSON Payload Inspector -->
+<div class="modal fade" id="jsonInspectModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content bg-dark text-light border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title fw-bold" id="jsonModalTitle">Audit Payload Details</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-warning small fw-bold mb-2">Previous State (Old Values)</h6>
+                        <pre class="bg-black text-warning p-3 rounded border border-secondary" style="max-height: 300px; overflow-y: auto;"><code id="oldValuesCode"></code></pre>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-success small fw-bold mb-2">New State (New Values)</h6>
+                        <pre class="bg-black text-success p-3 rounded border border-secondary" style="max-height: 300px; overflow-y: auto;"><code id="newValuesCode"></code></pre>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            $('#fullAuditTable').DataTable({
+                order: [[0, 'desc']]
+            });
+        });
+
+        function viewJsonPayload(actionType, oldJson, newJson) {
+            $('#jsonModalTitle').text('Audit Payload: ' + actionType);
+
+            try {
+                let parsedOld = JSON.parse(oldJson);
+                $('#oldValuesCode').text(JSON.stringify(parsedOld, null, 2));
+            } catch {
+                $('#oldValuesCode').text(oldJson || '{}');
+            }
+
+            try {
+                let parsedNew = JSON.parse(newJson);
+                $('#newValuesCode').text(JSON.stringify(parsedNew, null, 2));
+            } catch {
+                $('#newValuesCode').text(newJson || '{}');
+            }
+
+            var modal = new bootstrap.Modal(document.getElementById('jsonInspectModal'));
+            modal.show();
+        }
+    </script>
+}
